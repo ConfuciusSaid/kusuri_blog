@@ -1,0 +1,26 @@
+server:
+  port: ${SERVER_PORT:10000}
+
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:124.223.83.41}:${DB_PORT:2333}/${DB_NAME:kusuri_blog}?rewriteBatchedStatements=true&useSSL=false
+    type: com.zaxxer.hikari.HikariDataSource
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:a.2232281}
+    driver-class-name: com.mysql.jdbc.Driver
+  redis:
+    host: ${REDIS_HOST:124.223.83.41}
+    port: ${REDIS_PORT:2335}
+    password: ${REDIS_PASSWORD:a.2232281}
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 20
+        min-idle: 4
+        time-between-eviction-runs: 10s
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-enum-type-handler: org.apache.ibatis.type.EnumOrdinalTypeHandler
+  type-aliases-package: com.blogmain.pojo
