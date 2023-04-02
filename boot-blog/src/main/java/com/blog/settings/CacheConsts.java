@@ -25,6 +25,7 @@ public class CacheConsts {
     // blog home
 
     public static final String DESC_PREFIX = "home:desc:";
+    public static final String DESC_LOCK_PREFIX = "lock:desc:";
     public static final Long DESC_EXPIRED_TIME = 60L;
 
     public static final String USER_DESC_PREFIX = "home:desc:user:";

@@ -1,8 +1,8 @@
 import axios from "axios"
 
 //let url = "http://www.kusuri.world/api"
-axios.defaults.baseURL = "http://localhost:8080/api"
-// axios.defaults.baseURL = "https://www.kusuri.world/api"
+// axios.defaults.baseURL = "http://localhost:8080/api"
+axios.defaults.baseURL = "https://www.kusuri.world/api"
 
 function getToken() {
     let cookies = document.cookie.split("; ");

@@ -10,10 +10,17 @@ import com.blog.pojo.Desc;
 import com.blog.service.DescService;
 import com.blog.settings.CacheConsts;
 import org.mybatis.spring.annotation.MapperScan;
+import org.redisson.Redisson;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -25,21 +32,64 @@ public class DescServiceImpl extends ServiceImpl<DescMapper, Desc> implements De
     @Autowired
     StringRedisTemplate redisTemplate;
 
-    public Desc getDescById(String id) {
-        String key = CacheConsts.DESC_PREFIX + id;
-        String value = redisTemplate.opsForValue().get(key);
+    @Autowired
+    Redisson redissonClient;
 
-        if (value == null) {
-            Desc desc = getById(id);
-            if (desc == null) {
-                redisTemplate.opsForValue().set(key, "", CacheConsts.EMPTY_EXPIRED_TIME, TimeUnit.SECONDS);
-                return null;
-            } else {
-                redisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(desc), CacheConsts.DESC_EXPIRED_TIME,
-                        TimeUnit.SECONDS);
+//    public Desc getDescById(String id) throws InterruptedException {
+//        String key = CacheConsts.DESC_PREFIX + id;
+//        String value = null;
+//        value = redisTemplate.opsForValue().get(key);
+//        if (value == null) {
+//            Desc desc = getById(id);
+//            if (desc == null) {
+//                redisTemplate.opsForValue().set(key, "", CacheConsts.EMPTY_EXPIRED_TIME, TimeUnit.SECONDS);
+//                return null;
+//            } else {
+//                redisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(desc), CacheConsts.DESC_EXPIRED_TIME,
+//                        TimeUnit.SECONDS);
+//            }
+//            return desc;
+//        }
+//
+//        if (value.equals("")) {
+//            return null;
+//        }
+//        return JSONUtil.toBean(value, Desc.class);
+//    }
+    public Desc getDescById(String id) throws InterruptedException {
+        String key = CacheConsts.DESC_PREFIX + id;
+        String value = null;
+        while (value == null) {
+            RLock lock = redissonClient.getLock(CacheConsts.DESC_LOCK_PREFIX + id);
+            value = redisTemplate.opsForValue().get(key);
+            if (value == null) {
+                boolean isLock = lock.tryLock();
+                if (!isLock) {
+                    Thread.sleep(100);
+                    continue;
+                }
+                value = redisTemplate.opsForValue().get(key);
+                if (value != null) {
+                    lock.unlock();
+                    break;
+                }
+
+                try {
+                    Desc desc = getById(id);
+                    if (desc == null) {
+                        redisTemplate.opsForValue().set(key, "", CacheConsts.EMPTY_EXPIRED_TIME, TimeUnit.SECONDS);
+                        return null;
+                    } else {
+                        redisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(desc), CacheConsts.DESC_EXPIRED_TIME,
+                                TimeUnit.SECONDS);
+                    }
+                    return desc;
+                } finally {
+                    lock.unlock();
+                }
             }
-            return desc;
         }
+
         if (value.equals("")) {
             return null;
         }
@@ -47,7 +97,7 @@ public class DescServiceImpl extends ServiceImpl<DescMapper, Desc> implements De
     }
 
 //    @Override
-//    public Result getDescByUserId(Long id, Long page, Long limit) {
+//    public Result listDescByUserId(Long id, Long page, Long limit) {
 //        String key = CacheConsts.USER_DESC_PREFIX + id;
 //        long start = (page - 1) * limit;
 //        long end = page * limit - 1;
@@ -58,10 +108,15 @@ public class DescServiceImpl extends ServiceImpl<DescMapper, Desc> implements De
 //        Long count = redisTemplate.opsForZSet().zCard(key);
 //        List<Desc> descList = new ArrayList<>();
 //        for (String idStr : ids) {
-//            Desc desc = getDescById(idStr);
+//            Desc desc = null;
+//            try {
+//                desc = getDescById(idStr);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
 //            if (desc == null) {
 //                redisTemplate.opsForZSet().remove(key, idStr);
-//                return getDescByUserId(id, page, limit);
+//                return listDescByUserId(id, page, limit);
 //            } else {
 //                descList.add(desc);
 //            }
